@@ -1,0 +1,3 @@
+from .module_fairseq import FairSeqVectorExtractorVer2
+from .module_transformers import TransformerVectorExtractorVer2
+from .module_base import BaseTranslationModelHandlerVer2

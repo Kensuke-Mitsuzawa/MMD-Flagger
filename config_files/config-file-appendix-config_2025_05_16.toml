@@ -1,0 +1,20 @@
+path_dataset_tsv = "<PATH TO THE LFAN-HALL DATASET> /guerreiro_2023/annotated_corpus_checkpoint_2025_03_03_14h.tsv"
+path_fairseq_model_checkpoint = "<REPLACE LFAN-HALL MODEL DIRECTORY> /checkpoint_best.pt"
+path_fairseq_model_dir = "<REPLACE LFAN-HALL MODEL DIRECTORY> /wmt18_de-en"
+path_sentencepiece_model = "<REPLACE LFAN-HALL MODEL DIRECTORY> /sentencepiece_models/sentencepiece.joint.bpe.model"
+
+path_output_dir = "<DIRECTORY TO SAVE>"
+path_translation_cache_root = "<DIRECTORY OF THE TRANSLATION CACHE>"
+
+dir_name_log = "logs"
+
+# execution parameters
+seq_n_samples = [10, 25, 50, 100]
+# must be Python's pure float. Otherwise, omegaconf raises an exception.
+# temperature_values = [0.11, 0.16, 0.21, 0.26, 0.31, 0.36, 0.41, 0.46, 0.51, 0.56, 0.61, 0.66, 0.71, 0.76, 0.81, 0.86, 0.91, 0.96, 1.0]  # comment out: future work  
+temperature_values = [0.11, 0.21, 0.31, 0.41, 0.51, 0.61, 0.71, 0.81, 0.91, 1.0]
+
+
+[algorithm_parameter]
+    vector_preprocess = "avg"
+

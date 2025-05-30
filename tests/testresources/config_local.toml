@@ -1,0 +1,7 @@
+[path_fairseq_model]
+    path_fairseq_model_dir = "<DIRECTORY PATH OF A MODEL> /models/wmt18_de-en"
+    path_fairseq_model_file = "<<DIRECTORY PATH OF A MODEL>> /checkpoint_best.pt"
+    path_sentencepiece_model = "<DIRECTORY PATH OF A MODEL> /sentencepiece.joint.bpe.model"
+
+[path_dataset]
+    path_dataset_tsv = "<PATH TO THE LFAN-HALL DATASET> /test_dataset.tsv"

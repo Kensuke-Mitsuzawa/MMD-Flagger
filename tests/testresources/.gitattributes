@@ -1,0 +1,4 @@
+model_guerreiro_2023 filter=lfs diff=lfs merge=lfs -text
+model_guerreiro_2023/checkpoint_best.pt filter=lfs diff=lfs merge=lfs -text
+model_guerreiro_2023/sentencepiece.joint.bpe.model filter=lfs diff=lfs merge=lfs -text
+model_guerreiro_2023/wmt18_de-en filter=lfs diff=lfs merge=lfs -text

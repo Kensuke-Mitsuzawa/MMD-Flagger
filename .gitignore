@@ -1,0 +1,22 @@
+.pytest_cache/
+*ckpt
+.python-version
+
+pivottablejs.html
+
+__pycache__/
+.ipynb_checkpoints/
+logs/
+lightning_logs/
+wandb/
+
+# vscode
+.vscode/
+# pycharm
+.idea/
+mlruns/
+
+
+# notebooks one run
+tmp_notebooks/
+tmp-code-collection/

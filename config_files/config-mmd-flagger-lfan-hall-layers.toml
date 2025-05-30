@@ -1,0 +1,74 @@
+script_version = "0.2"
+config_name = "2025-05-06-layers"
+
+flagging_approaches = [
+    "MmdErrorFlaggerTrajectoryVer3Config",  # I have to put the config name.
+]
+
+[resource_config]
+    dataset_name = "lfan_hall"
+
+    path_work_dir = "<a path directory where you want to save the results.>"
+    path_dataset_tsv = "<a path where the lfan_hall tsv file is located.>"
+
+    n_calibration_records = 200
+
+
+[evaluation_config]
+    dir_name_output = "evaluation_output"
+
+
+[llm_model_config]
+    [llm_model_config.model_halomi]
+        # no overwriting
+
+    [llm_model_config.model_lfan_hall]
+        # please set the LFAN-HALL translation model (see README) and replace "<replace_here>"
+        path_fairseq_model_dir = "<replace here>/model_guerreiro_2023/wmt18_de-en"
+        path_fairseq_model_file = "<replace here>/model_guerreiro_2023/checkpoint_best.pt"
+        path_sentencepiece_model = "<replace here>/model_guerreiro_2023/sentencepiece_models/sentencepiece.joint.bpe.model"
+
+[translation_config]
+    max_len_a = 1.0
+    max_len_b = 10
+
+    temperature_beam = 1.0
+
+    candidates_n_sampling_stochastic = [25]
+    candidates_temperature_parameter = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    
+    # a directory that you want to save the translation outputs.
+    path_cache_translator = "<replace here>"
+
+
+[notification_config]
+    # (optional) write slack webhook URL here if you want to receive the notification. 
+    slack_wekhook = ""
+
+
+# ----------------------------------------------------------------------
+
+[approach_configs]
+    [approach_configs.MmdErrorFlaggerTrajectoryVer3Config]
+        option_n_translation_sampling = [25]
+        option_temperature_sequence = [
+            [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        ]
+
+        # option_vector_preprocess = ['concat', 'avg']
+        option_vector_preprocess = ['concat', 'avg']
+        option_max_token_length_vector_concat = ['max_calibration']
+        option_max_token_length = []
+        option_embedding_layer = [ "decoder.0", "decoder.1", "decoder.2", "decoder.3", "decoder.4", "decoder.5",]        
+
+        option_kernel_type = ['gaussian', 'dot']
+        
+        # option_kernel_gaussian_length_scale_computation = ['dimensionwise', 'single']
+        option_kernel_gaussian_length_scale_computation = ['single']
+        option_kernel_gaussian_length_scale = [12, 25, 50, 62, 75, 87]
+
+        option_trajectory_rule_versions = ["v1"]
+        # option_trajectory_rule_smoothing = ["no_filter", "rolling_mean"]
+        option_trajectory_rule_smoothing = ["no_filter"]
+        option_trajectory_rule_smoothing_window = [2]
+
