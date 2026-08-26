@@ -15,6 +15,7 @@ from mmd_flagger.module_mmd_flagger.module_kernels import StringBasedGaussianKer
 from mmd_flagger.module_mmd_flagger.module_kernels.module_distance import MeteorDistanceModule
 
 from mmd_flagger.utils import DecodingStrategyName, DecodingConfig
+from mmd_flagger.utils import setup_resources
 
 
 def test_interface_mmd_flagger_embedding():
@@ -58,6 +59,8 @@ def test_interface_mmd_flagger_embedding():
 
 
 def test_interface_mmd_flagger_text():
+    setup_resources.setup_string_kernel()
+
     path_tmp_dir = Path(tempfile.mkdtemp())
     path_tmp_db = path_tmp_dir / 'tmp.duckdb'
     connect_duckdb = duckdb.connect(path_tmp_db)

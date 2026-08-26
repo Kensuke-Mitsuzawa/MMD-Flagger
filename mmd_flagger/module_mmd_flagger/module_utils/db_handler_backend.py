@@ -4,7 +4,7 @@ import duckdb
 
 from ..module_models.model_db_record_obj import TableTypes, RecordObjMmdFlaggerIntermed
 # ---- DuckDB Utils -----
-from ....utils.duck_db_helper import (
+from ...utils.duck_db_helper import (
     reconstruct_sql_record_for_pydantic,
     generate_duckdb_schema,
 )

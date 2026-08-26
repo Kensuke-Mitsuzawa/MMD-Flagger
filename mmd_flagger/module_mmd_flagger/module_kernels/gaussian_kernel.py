@@ -9,7 +9,7 @@ from mmd_tst_variable_detector.kernels.gaussian_kernel import (
     KernelMatrixObject,
     QuadraticKernelMatrixContainer)
 
-from ....utils.utils_gpu_status import get_less_busy_cuda_device, is_cuda_usable
+from ...utils.utils_gpu_status import get_less_busy_cuda_device, is_cuda_usable
 
 
 
