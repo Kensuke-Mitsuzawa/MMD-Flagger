@@ -8,16 +8,16 @@ from pydantic import BaseModel
 from .models import GenerationInfoDict
 from .module_feature_extraction import *
 
-from ..model_objects import SampleSetContainer
-from ..module_mmd_flagger.module_models import (
-    SampleSet,
-    SingleSample
+from ..model_objects import (
+    SampleSetContainer,
+    LLMResponseTextStochastic
 )
-
-
-class ResponseStochastic(BaseModel):
-    temperature: float
-    responses: ty.List[str]
+from ..module_mmd_flagger.module_models.model_sample_set_container import (
+    SampleSet,
+    SingleSample,
+    TemperatureParameter
+)
+from ..utils.llm_decoding_conf_models import DecodingConfig, DecodingStrategyName
 
 
 class InterfaceFeatureExtraction(object):
@@ -31,74 +31,111 @@ class InterfaceFeatureExtraction(object):
         self.model_target = model_target
         self.default_model_name_or_path = default_model_name_or_path
 
+    def extract(
+        self,
+        prompt_text: str,
+        response_text: str,
+        tokenizer_target: ty.Optional[AutoTokenizer] = None,
+        model_target: ty.Optional[AutoModelForCausalLM] = None
+    ) -> GenerationInfoDict:
+        return self._run_llm_teacher_forcing(
+            prompt_text=prompt_text,
+            response_text=response_text,
+            tokenizer_target=tokenizer_target,
+            model_target=model_target
+        )
+
     def transform(
         self,
         prompt: str,
         response_y_hyp: str,
-        responses_y_stoch_obj: ty.List[ResponseStochastic],
+        responses_y_stoch_obj: ty.List[LLMResponseTextStochastic],
         extractors: ty.List[ty.Union[HiddenStatesExtractor, WordEmbeddingExtractor, LapEigvalsExtractor, AttentionEigenValsExtractor]]
     ) -> ty.List[SampleSetContainer]:
         """Extracting the feature based on the `run_llm_teacher_forcing`.
 
         Return: [SampleSetContainer]
         """
-        stack_y_hyp: ty.List[ty.Tuple[str, str, torch.Tensor]] = []  # [(feature-name, response-text, torch.Tensor)]
-        stack_y_sto: ty.List[ty.Tuple[float, str, torch.Tensor]] = []  # [(temp-param, feature-name, torch.Tensor)]
+        # 1. Extract feature objects for hypothesis response
+        gen_dict_hyp = self._run_llm_teacher_forcing(prompt, response_y_hyp)
+        hyp_samples_by_feat: ty.Dict[str, SingleSample] = {}
 
-        for _ext in extractors:
-            # extracting the feature from response_y_hyp.
-            _generation_dict_y_hyp = self._run_llm_teacher_forcing(prompt, response_y_hyp)
-            _feat_obj_h_hyp = _ext.extract(_generation_dict_y_hyp)
-            
-            for _f_h_hyp in _feat_obj_h_hyp:
-                stack_y_hyp.append([_f_h_hyp.get_feature_name(), response_y_hyp, _f_h_hyp.get_feature_vector()])
-            # end for
+        for ext in extractors:
+            feat_objs_hyp = ext.extract(gen_dict_hyp)
+            for f_hyp in feat_objs_hyp:
+                f_name = f_hyp.get_feature_name()
+                f_vec = f_hyp.get_feature_vector()
+                sample_id = hashlib.sha256(f"hyp_{f_name}_{response_y_hyp}".encode("utf-8")).hexdigest()
+                hyp_samples_by_feat[f_name] = SingleSample(
+                    sample_unique_id=sample_id,
+                    text=response_y_hyp,
+                    feature_vector=f_vec
+                )
 
-            # TODO: [(feature-name, response-text, torch.Tensor)] -> Aggregate by feature-name 
+        # 2. Extract feature objects for stochastic responses
+        # Map feature_name -> list of SampleSet (one per temperature)
+        stoch_sample_sets_by_feat: ty.Dict[str, ty.List[SampleSet]] = {
+            f_name: [] for f_name in hyp_samples_by_feat.keys()
+        }
 
-            # _sample_h_hyp = SampleSet(
-            #     label='Y_hyp', decoding_config=None, temperature_parameter=None,
-            #     samples=[SingleSample(sample_unique_id=0, text=response_y_hyp, feature_vector=_tensor_h_hyp)]
-            #     )
+        for res_sto in responses_y_stoch_obj:
+            temp = res_sto.temperature
+            samples_this_temp_by_feat: ty.Dict[str, ty.List[SingleSample]] = {
+                f_name: [] for f_name in hyp_samples_by_feat.keys()
+            }
 
-            # [0.1, 0.2, ..., 1.0]
-            # [feat_vec_0.1, feat_vec_0.2, ... feat_vec_1.0]
+            for idx, res_text in enumerate(res_sto.responses):
+                gen_dict_sto = self._run_llm_teacher_forcing(prompt, res_text)
 
-            # extracting the features from responses_y_stoch_obj.
-            # _stack_local_text = []
-            _stack_local_tensor = []
-            for _res_sto in responses_y_stoch_obj:
-                _res_sto.temperature
-                
-                for _res_text in _res_sto.responses:
-                    _generation_dict_h_sto = self._run_llm_teacher_forcing(prompt, _res_text)
-                    _feat_obj_h_sto = _ext.extract(_generation_dict_h_sto)
-                    
-                    for _f_h_sto in _feat_obj_h_sto:
-                        _stack_local_tensor.append([_f_h_sto.get_feature_name(), _f_h_sto.get_feature_vector()])
-                    # end for
-                # end for
+                for ext in extractors:
+                    feat_objs_sto = ext.extract(gen_dict_sto)
+                    for f_sto in feat_objs_sto:
+                        f_name = f_sto.get_feature_name()
+                        f_vec = f_sto.get_feature_vector()
+                        sample_id = hashlib.sha256(f"sto_{f_name}_{temp}_{idx}_{res_text}".encode("utf-8")).hexdigest()
+                        single_sample = SingleSample(
+                            sample_unique_id=sample_id,
+                            text=res_text,
+                            feature_vector=f_vec
+                        )
+                        if f_name not in samples_this_temp_by_feat:
+                            samples_this_temp_by_feat[f_name] = []
+                        samples_this_temp_by_feat[f_name].append(single_sample)
 
-                # [(feat-name, Tensor)] -> Agg-by-feat-name -> [(feat-name, Tensor)]. Tensor-length is the length-of-response.
-                # TODO: make the aggregation code.
-                _seq_feature_name2tensor = [[]]  # TODO: have to implement. [(feat-name, tensor)]. The Tensor-size should be (N-response, N-dim).
+            dec_config = DecodingConfig(
+                method=DecodingStrategyName.Stochastic,
+                temperature=temp
+            )
+            temp_param = TemperatureParameter(temperature_parameter=temp)
 
-                for (_f_name, _tensor) in _stack_local_tensor:
-                    stack_y_sto.append([_res_sto.temperature, _f_name, _tensor])                
-                # end for
-            # end for
-        # end for
+            for f_name, sample_list in samples_this_temp_by_feat.items():
+                if sample_list:
+                    sto_sample_set = SampleSet(
+                        label="Y_sto",
+                        decoding_config=dec_config,
+                        temperature_parameter=temp_param,
+                        samples=sample_list
+                    )
+                    if f_name not in stoch_sample_sets_by_feat:
+                        stoch_sample_sets_by_feat[f_name] = []
+                    stoch_sample_sets_by_feat[f_name].append(sto_sample_set)
 
-        # --------
-        # Aggregation at the end.
-
-        seq_sample_set_container = []
-
-        # TODO: we have to form the following data structure.
-        # {feat-name: (tensor-y-hyp, [(temp, tensor_y_stoch)])}
-        
-        # TODO: we have to set the following data object.
-        SampleSetContainer(feature_name=)
+        # 3. Construct SampleSetContainer for each feature
+        seq_sample_set_container: ty.List[SampleSetContainer] = []
+        for f_name, hyp_sample in hyp_samples_by_feat.items():
+            sample_y_hyp = SampleSet(
+                label="Y_hyp",
+                decoding_config=None,
+                temperature_parameter=None,
+                samples=[hyp_sample]
+            )
+            sample_set_y_stoch = stoch_sample_sets_by_feat.get(f_name, [])
+            container = SampleSetContainer(
+                feature_name=f_name,
+                sample_y_hyp=sample_y_hyp,
+                sample_set_y_stoch=sample_set_y_stoch
+            )
+            seq_sample_set_container.append(container)
 
         return seq_sample_set_container
 

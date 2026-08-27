@@ -9,6 +9,7 @@ from mmd_flagger.module_features.module_feature_extraction import (
     LapEigvalsExtractor,
     AttentionEigenValsExtractor,
 )
+from mmd_flagger.model_objects import LLMResponseTextStochastic
 
 
 def test_interface_feature_extraction():
@@ -52,6 +53,45 @@ def test_interface_feature_extraction():
     assert len(att_outputs) == 1
 
 
+def test_interface_method():
+    prompt = "Summarize the following news in 10 words: South Carolina officer shooting incident."
+    response_theta_hyp = "A police officer was charged after a shooting."
+    responses_stochastic = [
+        LLMResponseTextStochastic(
+            temperature=0.1, responses=["Officer charged following shooting incident."]
+        ),
+        LLMResponseTextStochastic(
+            temperature=0.2, responses=["Police officer charged after shooting."]
+        )
+    ]
+
+    tokenizer = AutoTokenizer.from_pretrained("sshleifer/tiny-gpt2")
+    model = AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2", attn_implementation="eager")
+    interface_feat = InterfaceFeatureExtraction(tokenizer_target=tokenizer, model_target=model)
+
+    extractors = [
+        HiddenStatesExtractor(resolved_layer_ids=[0]),
+        WordEmbeddingExtractor()
+    ]
+
+    sample_set_containers = interface_feat.transform(
+        prompt=prompt,
+        response_y_hyp=response_theta_hyp,
+        responses_y_stoch_obj=responses_stochastic,
+        extractors=extractors
+    )
+
+    assert len(sample_set_containers) == 2
+    for container in sample_set_containers:
+        assert container.feature_name in ["hidden-states_0", "word-embedding"]
+        assert container.sample_y_hyp.label == "Y_hyp"
+        assert len(container.sample_y_hyp.samples) == 1
+        assert len(container.sample_set_y_stoch) == 2
+        for stoch_set in container.sample_set_y_stoch:
+            assert stoch_set.label == "Y_sto"
+            assert len(stoch_set.samples) == 1
+
+
 if __name__ == "__main__":
     test_interface_feature_extraction()
-
+    test_interface_method()

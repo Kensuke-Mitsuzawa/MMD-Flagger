@@ -101,7 +101,7 @@ class HiddenStatesOutput(BaseExtractedFeatureObject):
 class HiddenStatesExtractor(BaseFeatureExtractor):
     def __init__(
         self,
-        resolved_layer_ids: List[int]
+        resolved_layer_ids: Optional[List[int]] = None
     ):
         self.resolved_layer_ids = resolved_layer_ids
 
@@ -118,8 +118,9 @@ class HiddenStatesExtractor(BaseFeatureExtractor):
     ) -> List[HiddenStatesOutput]:
         # determine which layers to iterate over
         seq_layer_index = list(generation_obj.layer_hidden_states.keys())
-        if resolved_layer_ids is not None:
-            seq_layer_index = [l for l in seq_layer_index if l in resolved_layer_ids]
+        layer_ids_to_use = resolved_layer_ids if resolved_layer_ids is not None else getattr(self, 'resolved_layer_ids', None)
+        if layer_ids_to_use is not None:
+            seq_layer_index = [l for l in seq_layer_index if l in layer_ids_to_use]
 
         seq_extraction = []
         for _layer_index in seq_layer_index:
