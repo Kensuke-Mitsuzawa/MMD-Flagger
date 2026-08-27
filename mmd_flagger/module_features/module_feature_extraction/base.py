@@ -33,6 +33,11 @@ class BaseExtractedFeatureObject(BaseModel, AbstractFeatureObject):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra='ignore',)
+
+    @abstractmethod
+    def get_feature_name(self) -> str:
+        """Return the name of the feature."""
+        raise NotImplementedError()
     
     @abstractmethod
     def get_supported_aggregations(self) -> ty.List[str]:

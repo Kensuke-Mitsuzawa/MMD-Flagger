@@ -1,8 +1,14 @@
+import typing as ty
 import json
 import numpy as np
 from scipy.stats import entropy
 
-def detect_hallucination_masate_online(score_aux_records: list) -> float:
+from ..module_mmd_flagger.mmd_flagger import EstimateReturnObject
+
+
+def detect_hallucination_masate_online(
+    feat2mmd_flagger_trajectory_obj: ty.Dict[str, EstimateReturnObject]
+    ) -> float:
     """
     Model-Agnostic Skewness-Adaptive Trajectory Ensemble Online (MASATE-Online)
     
@@ -10,42 +16,32 @@ def detect_hallucination_masate_online(score_aux_records: list) -> float:
     hallucination detection algorithm that requires no database or reference set.
     
     INPUT:
-      - score_aux_records (list): List of score_aux JSON strings or dictionaries 
-        containing the MMD trajectory and matrix data for a single inference.
-        
+      - feat2mmd_flagger_trajectory_obj: 
+                  
     RETURNS:
       - float: The MASATE-Online uncertainty score.
     """
     active_scores = []
     
-    for record in score_aux_records:
-        if not record:
-            continue
-        if isinstance(record, str):
-            try:
-                aux = json.loads(record)
-            except Exception:
-                continue
-        else:
-            aux = record
-            
-        mmd_traj = aux.get("mmd_traj", {}) or {}
-        mmd_matrix = aux.get("mmd_matrix", {}) or {}
+    _mmd_flagger_obj: EstimateReturnObject
+    for _feat, _mmd_flagger_obj in feat2mmd_flagger_trajectory_obj.items():            
+        mmd_traj = _mmd_flagger_obj.mmd_traj
+        mmd_matrix = _mmd_flagger_obj.mmd_matrix
         
-        distances = mmd_traj.get("mmd_distances", []) or []
+        distances = mmd_traj.mmd_distances
         if not distances:
-            continue
+            raise Exception('dist is empty')
             
         distances = [float(d) for d in distances if np.isfinite(d)]
         if len(distances) < 3:
-            continue
+            raise Exception('dist has less than 3 elements')
             
         # Unsupervised Activity Filtering:
         # Inactive domains have extremely flat trajectories (std near 0).
         # We only aggregate active domains with high-signal representations.
         std_val = np.std(distances)
         if std_val < 1e-5:
-            continue
+            raise Exception('dist has very small std')
             
         # 1. 1D Coefficient of Variation (Scale-free spread indicator)
         mean_val = np.mean(distances)

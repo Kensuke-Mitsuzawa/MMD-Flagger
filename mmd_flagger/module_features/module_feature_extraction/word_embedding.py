@@ -53,6 +53,9 @@ class WordEmbeddingsOutput(BaseExtractedFeatureObject):
 
     word_embeddings: torch.Tensor = Field(description="Tensor of shape (T, D), where T=generated-tokens, D=dims.")
 
+    def get_feature_name(self) -> str:
+        return f"{self.registry_name}"
+
     @classmethod
     def get_supported_aggregations(cls) -> List[str]:
         # return ['avg', 'concant']

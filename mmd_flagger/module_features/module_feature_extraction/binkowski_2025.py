@@ -25,6 +25,9 @@ class LapEigvalsOutput(BaseExtractedFeatureObject):
     tensor_scores: torch.Tensor = Field(description="Tensor of shape (L, H, T), where L is the number of layers, H is the number of heads.")
     tensor_index: torch.Tensor = Field(description="The corresponding indices of the tensor. (L, H, T)")
     
+    def get_feature_name(self) -> str:
+        return f"{self.registry_name}_{self.top_k}"
+
     @model_validator(mode='after')
     def check_values(self):
         if len(self.tensor_scores.shape) != 3:

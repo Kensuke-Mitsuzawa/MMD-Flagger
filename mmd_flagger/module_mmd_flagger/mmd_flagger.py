@@ -44,7 +44,7 @@ class EstimateReturnObject(ty.NamedTuple):
     mmd_traj: MmdErrorFlagResultVer3
 
 
-class MMDFlaggerInterface(object):
+class MMDFlagger(object):
     def __init__(self,
                  mmd_estimator: QuadraticMmdEstimator,
                  backend_db: ty.Optional[Path | duckdb.DuckDBPyConnection | DbHandlerMMDFlaggerInterface],

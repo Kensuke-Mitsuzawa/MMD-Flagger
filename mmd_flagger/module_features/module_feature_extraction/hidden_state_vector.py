@@ -50,6 +50,9 @@ class HiddenStatesOutput(BaseExtractedFeatureObject):
 
     model_config = config.ConfigDict(arbitrary_types_allowed=True)
 
+    def get_feature_name(self) -> str:
+        return f"{self.registry_name}_{self.layer_index}"
+
     @model_validator(mode='after')
     def check_tensor_shape(self) -> 'HiddenStatesOutput':
         if not len(self.embedding_vector.shape) == 2:
@@ -96,8 +99,11 @@ class HiddenStatesOutput(BaseExtractedFeatureObject):
 
 
 class HiddenStatesExtractor(BaseFeatureExtractor):
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        resolved_layer_ids: List[int]
+    ):
+        self.resolved_layer_ids = resolved_layer_ids
 
     @classmethod
     def get_supported_aggregations(cls) -> List[str]:

@@ -9,4 +9,4 @@ from .module_models import *
 
 from .module_utils.length_scale_calculate import KernelLengthScaleCalculator
 from .module_utils.tensor_preprocessor import TensorPreprocessorVer1
-from .interface_mmd_flagger import MMDFlaggerInterface, PossibleMetricsMMDFlaggerInterface
+from .mmd_flagger import MMDFlagger, PossibleMetricsMMDFlaggerInterface
