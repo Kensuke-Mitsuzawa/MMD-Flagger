@@ -1,4 +1,4 @@
-from typing import Any, Literal, List, Optional
+from typing import Any, Literal, List, Optional, Union
 import torch
 import torch.nn.functional as F
 from pydantic import Field, BaseModel, config, model_validator
@@ -97,6 +97,7 @@ class HiddenStatesOutput(BaseExtractedFeatureObject):
             raise ValueError(f"{method_aggregation} is not defined. It must be of {self.get_supported_aggregations()}")
 
 
+PossibleLayerCommand = Literal['middle', 'first', 'last']
 
 class HiddenStatesExtractor(BaseFeatureExtractor):
     def __init__(
@@ -112,15 +113,40 @@ class HiddenStatesExtractor(BaseFeatureExtractor):
     def extract(
         self,
         generation_obj: GenerationInfoDict,
-        *,
-        resolved_layer_ids: Optional[List[int]] = None,
+        resolved_layer_ids: Optional[List[Union[int, PossibleLayerCommand]]] = None,
         **kwargs,
     ) -> List[HiddenStatesOutput]:
         # determine which layers to iterate over
         seq_layer_index = list(generation_obj.layer_hidden_states.keys())
-        layer_ids_to_use = resolved_layer_ids if resolved_layer_ids is not None else getattr(self, 'resolved_layer_ids', None)
-        if layer_ids_to_use is not None:
-            seq_layer_index = [l for l in seq_layer_index if l in layer_ids_to_use]
+
+        # logic to resolve 
+        # if it is a list of ints, then just extract the given layers
+        # if it is 'first', then extract the first layer
+        # if it is 'last', then extract the last layer
+        # if it is 'middle', then extract the middle layer
+        target_resolved_layer_ids = []
+        if resolved_layer_ids is None:
+            target_resolved_layer_ids = getattr(self, 'resolved_layer_ids', None)
+        else:
+            if all(isinstance(i, int) for i in resolved_layer_ids):
+                target_resolved_layer_ids = resolved_layer_ids
+            elif any(isinstance(i, str) for i in resolved_layer_ids):
+                for _item in resolved_layer_ids:
+                    if _item == 'first':
+                        target_resolved_layer_ids.append(0)
+                    elif _item == 'last':
+                        target_resolved_layer_ids.append(len(seq_layer_index) - 1)
+                    elif _item == 'middle':
+                        target_resolved_layer_ids.append(len(seq_layer_index) // 2)
+                    else:
+                        raise ValueError(f"{_item} is not defined. It must be of {PossibleLayerCommand}")
+                else:
+                    raise ValueError(f"{resolved_layer_ids} is not defined. It must be of {PossibleLayerCommand}")
+            # end if
+        # end if
+
+
+        seq_layer_index = [l for l in seq_layer_index if l in target_resolved_layer_ids]
 
         seq_extraction = []
         for _layer_index in seq_layer_index:

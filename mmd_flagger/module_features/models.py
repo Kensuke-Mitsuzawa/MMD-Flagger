@@ -49,3 +49,4 @@ class GenerationInfoDict(BaseModel):
         # end for
 
         return self
+

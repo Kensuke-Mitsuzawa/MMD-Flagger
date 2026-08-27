@@ -19,17 +19,23 @@ from ..module_mmd_flagger.module_models.model_sample_set_container import (
 )
 from ..utils.llm_decoding_conf_models import DecodingConfig, DecodingStrategyName
 
+DEFAULT_EXTRACTORS = [
+    HiddenStatesExtractor(resolved_layer_ids=['middle']),
+    WordEmbeddingExtractor(),
+    LapEigvalsExtractor(),
+    AttentionEigenValsExtractor()
+]
 
 class InterfaceFeatureExtraction(object):
     def __init__(
         self,
-        tokenizer_target: ty.Optional[AutoTokenizer] = None,
-        model_target: ty.Optional[AutoModelForCausalLM] = None,
-        default_model_name_or_path: str = "sshleifer/tiny-gpt2"
+        tokenizer_target: AutoTokenizer,
+        model_target: AutoModelForCausalLM,
+        extractors: ty.List[ty.Union[HiddenStatesExtractor, WordEmbeddingExtractor, LapEigvalsExtractor, AttentionEigenValsExtractor]] = DEFAULT_EXTRACTORS,
     ):
         self.tokenizer_target = tokenizer_target
         self.model_target = model_target
-        self.default_model_name_or_path = default_model_name_or_path
+        self.extractors = extractors
 
     def extract(
         self,
@@ -50,7 +56,6 @@ class InterfaceFeatureExtraction(object):
         prompt: str,
         response_y_hyp: str,
         responses_y_stoch_obj: ty.List[LLMResponseTextStochastic],
-        extractors: ty.List[ty.Union[HiddenStatesExtractor, WordEmbeddingExtractor, LapEigvalsExtractor, AttentionEigenValsExtractor]]
     ) -> ty.List[SampleSetContainer]:
         """Extracting the feature based on the `run_llm_teacher_forcing`.
 
@@ -60,7 +65,7 @@ class InterfaceFeatureExtraction(object):
         gen_dict_hyp = self._run_llm_teacher_forcing(prompt, response_y_hyp)
         hyp_samples_by_feat: ty.Dict[str, SingleSample] = {}
 
-        for ext in extractors:
+        for ext in self.extractors:
             feat_objs_hyp = ext.extract(gen_dict_hyp)
             for f_hyp in feat_objs_hyp:
                 f_name = f_hyp.get_feature_name()
@@ -87,7 +92,7 @@ class InterfaceFeatureExtraction(object):
             for idx, res_text in enumerate(res_sto.responses):
                 gen_dict_sto = self._run_llm_teacher_forcing(prompt, res_text)
 
-                for ext in extractors:
+                for ext in self.extractors:
                     feat_objs_sto = ext.extract(gen_dict_sto)
                     for f_sto in feat_objs_sto:
                         f_name = f_sto.get_feature_name()
@@ -166,14 +171,19 @@ class InterfaceFeatureExtraction(object):
         model = model_target or self.model_target
         if model is None:
             model = AutoModelForCausalLM.from_pretrained(self.default_model_name_or_path, attn_implementation="eager")
+        # end if
+
+        device_model = model.device
 
         # Encode prompt
         prompt_inputs = tokenizer(prompt_text, return_tensors="pt")
         prompt_input_ids = prompt_inputs["input_ids"]
+        prompt_input_ids= prompt_input_ids.to(device_model)
 
         # Encode response
         response_inputs = tokenizer(response_text, return_tensors="pt", add_special_tokens=False)
         generated_token_ids = response_inputs["input_ids"]
+        generated_token_ids = generated_token_ids.to(device_model)
 
         # Concatenate for teacher-forcing forward pass
         full_input_ids = torch.cat([prompt_input_ids, generated_token_ids], dim=1)
