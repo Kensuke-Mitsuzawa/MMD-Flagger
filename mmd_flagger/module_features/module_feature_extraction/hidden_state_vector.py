@@ -146,7 +146,8 @@ class HiddenStatesExtractor(BaseFeatureExtractor):
         # end if
 
 
-        seq_layer_index = [l for l in seq_layer_index if l in target_resolved_layer_ids]
+        if target_resolved_layer_ids is not None:
+            seq_layer_index = [l for l in seq_layer_index if l in target_resolved_layer_ids]
 
         seq_extraction = []
         for _layer_index in seq_layer_index:

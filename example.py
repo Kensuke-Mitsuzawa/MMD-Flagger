@@ -1,12 +1,17 @@
 import torch
+import duckdb
 from transformers import BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from mmd_flagger import (
     InterfaceFeatureExtraction,
     Interface,
     LLMResponseTextStochastic
 )
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from mmd_flagger.module_mmd_flagger import MMDFlagger, QuadraticMmdEstimator
+from mmd_flagger.module_mmd_flagger.module_kernels import DotProductKernel
+
+
 
 import logging
 
@@ -54,10 +59,17 @@ model_target = AutoModelForCausalLM.from_pretrained(
 )
 
 
+
 feat_extractor = InterfaceFeatureExtraction(tokenizer_target, model_target)
 sample_set_containers = feat_extractor.transform(prompt, response_theta_hyp, responses_stochastic)
 
 # ---------------------------
 
 # this returns the all detailed object.
-Interface.fit(sample_set_containers)
+connect_duckdb = duckdb.connect(":memory:")
+mmd_estimator = QuadraticMmdEstimator(DotProductKernel())
+mmd_flagger = MMDFlagger(mmd_estimator=mmd_estimator, backend_db=connect_duckdb)
+
+interface = Interface(mmd_flagger=mmd_flagger)
+result = interface.fit(sample_set_containers)
+print("Fit Result:", result)

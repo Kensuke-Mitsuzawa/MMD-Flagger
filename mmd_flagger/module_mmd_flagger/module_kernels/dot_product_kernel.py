@@ -64,7 +64,11 @@ class DotProductKernel(BaseCustomKernel):
     def dot_product_kernel(self, X, Y=None):
         if Y is None:
             Y = X
-        return torch.matmul(X, Y.T)
+        if X.dim() == 1:
+            X = X.unsqueeze(0)
+        if Y.dim() == 1:
+            Y = Y.unsqueeze(0)
+        return torch.matmul(X, Y.transpose(-1, -2))
 
     def compute_kernel_matrix(self,
                               x: torch.Tensor,

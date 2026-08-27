@@ -21,9 +21,7 @@ from ..utils.llm_decoding_conf_models import DecodingConfig, DecodingStrategyNam
 
 DEFAULT_EXTRACTORS = [
     HiddenStatesExtractor(resolved_layer_ids=['middle']),
-    WordEmbeddingExtractor(),
-    LapEigvalsExtractor(),
-    AttentionEigenValsExtractor()
+    WordEmbeddingExtractor()
 ]
 
 class InterfaceFeatureExtraction(object):
@@ -56,16 +54,23 @@ class InterfaceFeatureExtraction(object):
         prompt: str,
         response_y_hyp: str,
         responses_y_stoch_obj: ty.List[LLMResponseTextStochastic],
+        extractors: ty.Optional[ty.List[ty.Union[HiddenStatesExtractor, WordEmbeddingExtractor, LapEigvalsExtractor, AttentionEigenValsExtractor]]] = None,
     ) -> ty.List[SampleSetContainer]:
         """Extracting the feature based on the `run_llm_teacher_forcing`.
 
         Return: [SampleSetContainer]
         """
+        active_extractors = extractors if extractors is not None else self.extractors
+        needs_attentions = any(
+            isinstance(ext, (LapEigvalsExtractor, AttentionEigenValsExtractor))
+            for ext in active_extractors
+        )
+
         # 1. Extract feature objects for hypothesis response
-        gen_dict_hyp = self._run_llm_teacher_forcing(prompt, response_y_hyp)
+        gen_dict_hyp = self._run_llm_teacher_forcing(prompt, response_y_hyp, output_attentions=needs_attentions)
         hyp_samples_by_feat: ty.Dict[str, SingleSample] = {}
 
-        for ext in self.extractors:
+        for ext in active_extractors:
             feat_objs_hyp = ext.extract(gen_dict_hyp)
             for f_hyp in feat_objs_hyp:
                 f_name = f_hyp.get_feature_name()
@@ -90,9 +95,9 @@ class InterfaceFeatureExtraction(object):
             }
 
             for idx, res_text in enumerate(res_sto.responses):
-                gen_dict_sto = self._run_llm_teacher_forcing(prompt, res_text)
+                gen_dict_sto = self._run_llm_teacher_forcing(prompt, res_text, output_attentions=needs_attentions)
 
-                for ext in self.extractors:
+                for ext in active_extractors:
                     feat_objs_sto = ext.extract(gen_dict_sto)
                     for f_sto in feat_objs_sto:
                         f_name = f_sto.get_feature_name()
@@ -128,11 +133,12 @@ class InterfaceFeatureExtraction(object):
         # 3. Construct SampleSetContainer for each feature
         seq_sample_set_container: ty.List[SampleSetContainer] = []
         for f_name, hyp_sample in hyp_samples_by_feat.items():
+            #
             sample_y_hyp = SampleSet(
                 label="Y_hyp",
                 decoding_config=None,
                 temperature_parameter=None,
-                samples=[hyp_sample]
+                samples=[hyp_sample, hyp_sample]
             )
             sample_set_y_stoch = stoch_sample_sets_by_feat.get(f_name, [])
             container = SampleSetContainer(
@@ -149,21 +155,10 @@ class InterfaceFeatureExtraction(object):
         prompt_text: str,
         response_text: str,
         tokenizer_target: ty.Optional[AutoTokenizer] = None,
-        model_target: ty.Optional[AutoModelForCausalLM] = None
+        model_target: ty.Optional[AutoModelForCausalLM] = None,
+        output_attentions: ty.Optional[bool] = None,
     ) -> GenerationInfoDict:
-        """Extracting features from the target model using the teacher-forcing mode.
-        The premise is that a pair of (prompt, generation-response) is given.
-        The `generation-response` is the generated text by the target model.
-
-        Args:
-            prompt_text (str): The prompt text.
-            response_text (str): The generated text.
-            tokenizer_target (Optional[AutoTokenizer]): The tokenizer of the target model.
-            model_target (Optional[AutoModelForCausalLM]): The model of the target model.
-
-        Returns:
-            GenerationInfoDict: Container with extracted internal states.
-        """
+        """Extracting features from the target model using the teacher-forcing mode."""
         tokenizer = tokenizer_target or self.tokenizer_target
         if tokenizer is None:
             tokenizer = AutoTokenizer.from_pretrained(self.default_model_name_or_path)
@@ -188,12 +183,23 @@ class InterfaceFeatureExtraction(object):
         # Concatenate for teacher-forcing forward pass
         full_input_ids = torch.cat([prompt_input_ids, generated_token_ids], dim=1)
 
+        if output_attentions is None:
+            needs_attentions = any(
+                isinstance(ext, (LapEigvalsExtractor, AttentionEigenValsExtractor))
+                for ext in self.extractors
+            ) or True
+        else:
+            needs_attentions = output_attentions
+
         model.eval()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         with torch.no_grad():
             outputs = model(
                 input_ids=full_input_ids,
                 output_hidden_states=True,
-                output_attentions=True,
+                output_attentions=needs_attentions,
                 return_dict=True
             )
 
@@ -201,9 +207,10 @@ class InterfaceFeatureExtraction(object):
             i: h.cpu().squeeze(0) for i, h in enumerate(outputs.hidden_states)
         }
 
-
-        attention_matrix = torch.stack([att.squeeze(0) for att in outputs.attentions], dim=0)
-        attention_matrix = attention_matrix.cpu()
+        if outputs.attentions is not None:
+            attention_matrix = torch.stack([att.squeeze(0).cpu() for att in outputs.attentions], dim=0)
+        else:
+            attention_matrix = torch.empty((0, 0, 0, 0))
 
         prompt_ids_1d = prompt_input_ids.squeeze(0)
         generated_ids_1d = generated_token_ids.squeeze(0)

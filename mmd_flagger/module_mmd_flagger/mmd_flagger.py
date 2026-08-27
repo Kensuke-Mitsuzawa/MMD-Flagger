@@ -223,7 +223,7 @@ class MMDFlagger(object):
         else:
             logger.debug(f"MMD-flagger (embedding-based) is called.")
             assert isinstance(self.mmd_flagger, MmdErrorFlaggerTrajectoryVer3)
-            _seq_emb_hyp = Y_hyp.get_embedding_samples()[0]
+            _seq_emb_hyp = torch.stack(Y_hyp.get_embedding_samples(), dim=0)
             tau2processed_embedding_samples = {o.temperature_parameter.as_float(): torch.stack(o.get_embedding_samples(), dim=0) for o in Y_sto}  # type: ignore
 
             # ---- logging block ----

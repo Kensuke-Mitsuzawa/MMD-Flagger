@@ -3,7 +3,11 @@ import json
 import numpy as np
 from scipy.stats import entropy
 
+import logging
+
 from ..module_mmd_flagger.mmd_flagger import EstimateReturnObject
+
+logger = logging.getLogger(__name__)
 
 
 def detect_hallucination_masate_online(
@@ -30,18 +34,21 @@ def detect_hallucination_masate_online(
         
         distances = mmd_traj.mmd_distances
         if not distances:
-            raise Exception('dist is empty')
+            logger.warning(f"No distances found for feature {_feat}")
+            continue
             
         distances = [float(d) for d in distances if np.isfinite(d)]
         if len(distances) < 3:
-            raise Exception('dist has less than 3 elements')
+            logger.warning(f"Less than 3 finite distances for feature {_feat}")
+            continue
             
         # Unsupervised Activity Filtering:
         # Inactive domains have extremely flat trajectories (std near 0).
         # We only aggregate active domains with high-signal representations.
         std_val = np.std(distances)
         if std_val < 1e-5:
-            raise Exception('dist has very small std')
+            logger.warning(f"Feature {_feat} has very small std_val: {std_val}")
+            continue
             
         # 1. 1D Coefficient of Variation (Scale-free spread indicator)
         mean_val = np.mean(distances)

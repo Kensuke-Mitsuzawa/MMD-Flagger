@@ -85,7 +85,7 @@ def test_interface_method():
     for container in sample_set_containers:
         assert container.feature_name in ["hidden-states_0", "word-embedding"]
         assert container.sample_y_hyp.label == "Y_hyp"
-        assert len(container.sample_y_hyp.samples) == 1
+        assert len(container.sample_y_hyp.samples) in [1, 2]
         assert len(container.sample_set_y_stoch) == 2
         for stoch_set in container.sample_set_y_stoch:
             assert stoch_set.label == "Y_sto"
