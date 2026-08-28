@@ -1,6 +1,8 @@
 import typing as ty
 import torch
 import hashlib
+import logging
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from pydantic import BaseModel
@@ -20,9 +22,14 @@ from ..module_mmd_flagger.module_models.model_sample_set_container import (
 from ..utils.llm_decoding_conf_models import DecodingConfig, DecodingStrategyName
 
 DEFAULT_EXTRACTORS = [
+    # LapEigvalsExtractor(top_k=100),
+    # AttentionEigenValsExtractor(top_k=100),
     HiddenStatesExtractor(resolved_layer_ids=['middle']),
     WordEmbeddingExtractor()
 ]
+
+
+logger = logging.getLogger(__name__)
 
 class InterfaceFeatureExtraction(object):
     def __init__(
@@ -53,14 +60,13 @@ class InterfaceFeatureExtraction(object):
         self,
         prompt: str,
         response_y_hyp: str,
-        responses_y_stoch_obj: ty.List[LLMResponseTextStochastic],
-        extractors: ty.Optional[ty.List[ty.Union[HiddenStatesExtractor, WordEmbeddingExtractor, LapEigvalsExtractor, AttentionEigenValsExtractor]]] = None,
+        responses_y_stoch_obj: ty.List[LLMResponseTextStochastic]
     ) -> ty.List[SampleSetContainer]:
         """Extracting the feature based on the `run_llm_teacher_forcing`.
 
         Return: [SampleSetContainer]
         """
-        active_extractors = extractors if extractors is not None else self.extractors
+        active_extractors = self.extractors
         needs_attentions = any(
             isinstance(ext, (LapEigvalsExtractor, AttentionEigenValsExtractor))
             for ext in active_extractors
@@ -71,6 +77,8 @@ class InterfaceFeatureExtraction(object):
         hyp_samples_by_feat: ty.Dict[str, SingleSample] = {}
 
         for ext in active_extractors:
+            logger.info(f"Extracting features with {ext.__name__} ...")
+
             feat_objs_hyp = ext.extract(gen_dict_hyp)
             for f_hyp in feat_objs_hyp:
                 f_name = f_hyp.get_feature_name()
@@ -81,6 +89,8 @@ class InterfaceFeatureExtraction(object):
                     text=response_y_hyp,
                     feature_vector=f_vec
                 )
+            # end for
+        # end for
 
         # 2. Extract feature objects for stochastic responses
         # Map feature_name -> list of SampleSet (one per temperature)
@@ -144,7 +154,7 @@ class InterfaceFeatureExtraction(object):
             container = SampleSetContainer(
                 feature_name=f_name,
                 sample_y_hyp=sample_y_hyp,
-                sample_set_y_stoch=sample_set_y_stoch
+                sample_set_y_stoch=sample_set_y_stoch,
             )
             seq_sample_set_container.append(container)
 

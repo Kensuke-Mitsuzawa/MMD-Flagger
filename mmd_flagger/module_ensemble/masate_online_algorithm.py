@@ -28,6 +28,17 @@ def detect_hallucination_masate_online(
     active_scores = []
     
     _mmd_flagger_obj: EstimateReturnObject
+
+    if len(feat2mmd_flagger_trajectory_obj) == 0:
+        logger.warning(f"No feature and MMD-objects are given. Return 0.0 as hallucination score.")
+        return 0.0
+    # end if
+
+    if len(feat2mmd_flagger_trajectory_obj) == 1:
+        logger.warning(f"Only one feature is given. Return 0.0 as hallucination score.")
+        return 0.0
+    # end if
+
     for _feat, _mmd_flagger_obj in feat2mmd_flagger_trajectory_obj.items():            
         mmd_traj = _mmd_flagger_obj.mmd_traj
         mmd_matrix = _mmd_flagger_obj.mmd_matrix
@@ -55,8 +66,8 @@ def detect_hallucination_masate_online(
         cv = std_val / (mean_val + 1e-8)
         
         # 2. 2D Concentrated Energy (Entropy-based localized spike indicator)
-        matrix_vals = mmd_matrix.get("values_matrix", []) or []
-        if matrix_vals:
+        matrix_vals = mmd_matrix.values_matrix
+        if len(matrix_vals) == 0:
             matrix_flat = np.array(matrix_vals).flatten()
             matrix_flat = matrix_flat[np.isfinite(matrix_flat)]
             matrix_flat = np.clip(matrix_flat, 0, None)

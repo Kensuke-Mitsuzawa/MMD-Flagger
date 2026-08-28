@@ -10,7 +10,7 @@ from .module_ensemble import masate_online_algorithm
 from .model_objects import (
     SampleSetContainer,
     ResultPerFeature,
-    Result
+    InterfaceResult
 )
 
 
@@ -25,7 +25,7 @@ class Interface(object):
     def fit(
         self,
         samples: ty.List[SampleSetContainer]
-        ) -> Result:
+        ) -> InterfaceResult:
         """
 
         This function fit the Interface.
@@ -59,4 +59,4 @@ class Interface(object):
             res_per_feat.append(ResultPerFeature(feature_name=_feat, mmd_trajectory=_mmd_trajectory_feat))
         # end for
 
-        return Result(score_ensemble=_score_ensemble, result_obj_feature=res_per_feat)
+        return InterfaceResult(score_ensemble=_score_ensemble, result_obj_feature=res_per_feat)

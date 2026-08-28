@@ -6,6 +6,10 @@ import dataclasses
 import hashlib
 import logging
 
+from matplotlib.axes import Axes
+import seaborn as sns
+import pandas as pd
+
 import torch
 
 from mmd_tst_variable_detector.mmd_estimator import QuadraticMmdEstimator, KernelMatrixObject
@@ -42,6 +46,27 @@ class EstimateReturnObject(ty.NamedTuple):
     score: float
     mmd_matrix: score_matrix_outlier.MmdMatrix
     mmd_traj: MmdErrorFlagResultVer3
+
+    def render_mmd_trajectory(self, ax_obj: Axes, name_feature: ty.Optional[str] = None) -> ty.Tuple[Axes]:
+        """render the MMD-trajectory.
+        
+        x-axis: MMD-value.
+        y-axis: temperature parameters.
+
+        Return: tuple of (Axes, feature_name).
+        """
+
+        df_plot = pd.DataFrame({
+            'x_vals': self.mmd_traj.tau_parameter,
+            'y_vals': self.mmd_traj.mmd_distances,
+        })
+
+        sns.lineplot(data=df_plot, x='x_vals', y='y_vals', ax=ax_obj, label=name_feature)
+        
+        return ax_obj
+# end class
+
+
 
 
 class MMDFlagger(object):

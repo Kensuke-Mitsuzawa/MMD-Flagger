@@ -1,7 +1,6 @@
 import typing as ty
 from pydantic import BaseModel
 
-
 class MmdErrorFlagResultVer3(BaseModel):
     n_sample: int
 
@@ -14,5 +13,3 @@ class MmdErrorFlagResultVer3(BaseModel):
     is_hallucination: bool
 
     kernel_containers: ty.Optional[ty.List[ty.Dict]] = None  # list of Kernel matrices `KernelMatrixObject` for each \tau value.
-# end class
-

@@ -126,28 +126,31 @@ class HiddenStatesExtractor(BaseFeatureExtractor):
         # if it is 'middle', then extract the middle layer
         target_resolved_layer_ids = []
         if resolved_layer_ids is None:
-            target_resolved_layer_ids = getattr(self, 'resolved_layer_ids', None)
-        else:
-            if all(isinstance(i, int) for i in resolved_layer_ids):
-                target_resolved_layer_ids = resolved_layer_ids
-            elif any(isinstance(i, str) for i in resolved_layer_ids):
-                for _item in resolved_layer_ids:
-                    if _item == 'first':
-                        target_resolved_layer_ids.append(0)
-                    elif _item == 'last':
-                        target_resolved_layer_ids.append(len(seq_layer_index) - 1)
-                    elif _item == 'middle':
-                        target_resolved_layer_ids.append(len(seq_layer_index) // 2)
-                    else:
-                        raise ValueError(f"{_item} is not defined. It must be of {PossibleLayerCommand}")
+            resolved_layer_ids = getattr(self, 'resolved_layer_ids', None)
+        # end if
+
+        if all(isinstance(i, int) for i in resolved_layer_ids):
+            target_resolved_layer_ids = resolved_layer_ids
+        elif any(isinstance(i, str) for i in resolved_layer_ids):
+            for _item in resolved_layer_ids:
+                if _item == 'first':
+                    target_resolved_layer_ids.append(0)
+                elif _item == 'last':
+                    target_resolved_layer_ids.append(len(seq_layer_index) - 1)
+                elif _item == 'middle':
+                    target_resolved_layer_ids.append(len(seq_layer_index) // 2)
                 else:
-                    raise ValueError(f"{resolved_layer_ids} is not defined. It must be of {PossibleLayerCommand}")
-            # end if
+                    raise ValueError(f"{_item} is not defined. It must be of {PossibleLayerCommand}")
+                # end if
+            # end for
+        else:
+            raise ValueError(f"Something is wrong with the input of {resolved_layer_ids}")
         # end if
 
 
         if target_resolved_layer_ids is not None:
             seq_layer_index = [l for l in seq_layer_index if l in target_resolved_layer_ids]
+        # end if
 
         seq_extraction = []
         for _layer_index in seq_layer_index:
