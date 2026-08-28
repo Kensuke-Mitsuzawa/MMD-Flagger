@@ -16,6 +16,8 @@ from matplotlib.axes import Axes
 import seaborn
 
 
+
+
 class LLMResponseTextStochastic(BaseModel):
     temperature: float
     responses: ty.List[str]
@@ -24,6 +26,7 @@ class LLMResponseTextStochastic(BaseModel):
 class ResultPerFeature(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     feature_name: str
+    scoring_method: str
     mmd_trajectory: EstimateReturnObject
 
     def get_score(self) -> float:
@@ -41,6 +44,15 @@ class InterfaceResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     score_ensemble: float
     result_obj_feature: ty.List[ResultPerFeature]
+
+    def get_summary(self) -> str:
+        document = ""
+        for _feat_obj in self.result_obj_feature:
+            _line = f"Feature: {_feat_obj.feature_name}. Scoring_method: {_feat_obj.scoring_method}. Score: {_feat_obj.get_score()}.\n"
+            document += _line
+        # end for
+
+        return document
 
     def render_mmd_trajectories(self, ax_obj: Axes) -> Axes:
         """Render the MMD-trajectories for all features."""

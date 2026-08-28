@@ -5,3 +5,5 @@ from .word_embedding import WordEmbeddingExtractor, WordEmbeddingsOutput
 from .binkowski_2025 import LapEigvalsExtractor, LapEigvalsOutput
 from .attention_score_diag import AttentionEigenValsExtractor, AttentionEigenValsOutput
 
+from .semantic_model_vector import SemanticEmbeddingExtractor, SemanticEmbeddingOutput
+

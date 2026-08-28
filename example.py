@@ -167,6 +167,7 @@ mmd_flagger = MMDFlagger(mmd_estimator=mmd_estimator, backend_db=connect_duckdb)
 interface = Interface(mmd_flagger=mmd_flagger)
 result = interface.fit(sample_set_containers)
 print("Fit Result:", result.score_ensemble)
+print(f"\n{result.get_summary()}")
 
 # ---------------------------
 # plot the trajectory.

@@ -5,4 +5,5 @@ from .module_feature_extraction import (
     WordEmbeddingExtractor,
     LapEigvalsExtractor,
     AttentionEigenValsExtractor,
+    SemanticEmbeddingExtractor
 )

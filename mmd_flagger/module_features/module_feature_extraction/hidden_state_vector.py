@@ -129,7 +129,9 @@ class HiddenStatesExtractor(BaseFeatureExtractor):
             resolved_layer_ids = getattr(self, 'resolved_layer_ids', None)
         # end if
 
-        if all(isinstance(i, int) for i in resolved_layer_ids):
+        if resolved_layer_ids is None:
+            target_resolved_layer_ids = seq_layer_index
+        elif all(isinstance(i, int) for i in resolved_layer_ids):
             target_resolved_layer_ids = resolved_layer_ids
         elif any(isinstance(i, str) for i in resolved_layer_ids):
             for _item in resolved_layer_ids:

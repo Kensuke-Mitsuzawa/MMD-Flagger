@@ -1,6 +1,11 @@
 from .module_features import (
     InterfaceFeatureExtraction,
-    GenerationInfoDict
+    GenerationInfoDict,
+    HiddenStatesExtractor,
+    WordEmbeddingExtractor,
+    LapEigvalsExtractor,
+    AttentionEigenValsExtractor,
+    SemanticEmbeddingExtractor,
 )
 from .interface_mmd_flagger import (
     Interface
@@ -8,3 +13,4 @@ from .interface_mmd_flagger import (
 from .model_objects import (
     LLMResponseTextStochastic
 )
+
